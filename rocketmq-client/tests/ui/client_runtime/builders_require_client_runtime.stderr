@@ -1,39 +1,39 @@
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
- --> tests/ui/client_runtime/builders_require_client_runtime.rs:8:13
-  |
-8 |     let _ = DefaultMQProducer::builder();
-  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `Arc<ClientRuntime>` is missing
-  |
+ --> tests/ui/client_runtime/builders_require_client_runtime.rs:22:13
+   |
+22 |     let _ = DefaultMQProducer::builder();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `Arc<ClientRuntime>` is missing
+   |
 note: associated function defined here
  --> src/producer/default_mq_producer.rs
   |
   |     pub fn builder(client_runtime: Arc<ClientRuntime>) -> DefaultMQProducerBuilder {
   |            ^^^^^^^
 help: provide the argument
-  |
-8 |     let _ = DefaultMQProducer::builder(/* Arc<ClientRuntime> */);
-  |                                        ++++++++++++++++++++++++
+   |
+22 |     let _ = DefaultMQProducer::builder(/* Arc<ClientRuntime> */);
+   |                                        ++++++++++++++++++++++++
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
- --> tests/ui/client_runtime/builders_require_client_runtime.rs:9:13
-  |
-9 |     let _ = DefaultMQPushConsumer::builder();
-  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `Arc<ClientRuntime>` is missing
-  |
+ --> tests/ui/client_runtime/builders_require_client_runtime.rs:23:13
+   |
+23 |     let _ = DefaultMQPushConsumer::builder();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `Arc<ClientRuntime>` is missing
+   |
 note: associated function defined here
  --> src/consumer/default_mq_push_consumer.rs
   |
   |     pub fn builder(client_runtime: Arc<ClientRuntime>) -> DefaultMQPushConsumerBuilder {
   |            ^^^^^^^
 help: provide the argument
-  |
-9 |     let _ = DefaultMQPushConsumer::builder(/* Arc<ClientRuntime> */);
-  |                                            ++++++++++++++++++++++++
+   |
+23 |     let _ = DefaultMQPushConsumer::builder(/* Arc<ClientRuntime> */);
+   |                                            ++++++++++++++++++++++++
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> tests/ui/client_runtime/builders_require_client_runtime.rs:10:13
+  --> tests/ui/client_runtime/builders_require_client_runtime.rs:24:13
    |
-10 |     let _ = DefaultLitePullConsumer::builder();
+24 |     let _ = DefaultLitePullConsumer::builder();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `Arc<ClientRuntime>` is missing
    |
 note: associated function defined here
@@ -43,13 +43,13 @@ note: associated function defined here
    |            ^^^^^^^
 help: provide the argument
    |
-10 |     let _ = DefaultLitePullConsumer::builder(/* Arc<ClientRuntime> */);
+24 |     let _ = DefaultLitePullConsumer::builder(/* Arc<ClientRuntime> */);
    |                                              ++++++++++++++++++++++++
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> tests/ui/client_runtime/builders_require_client_runtime.rs:11:13
+  --> tests/ui/client_runtime/builders_require_client_runtime.rs:25:13
    |
-11 |     let _ = TransactionMQProducer::builder();
+25 |     let _ = TransactionMQProducer::builder();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `Arc<ClientRuntime>` is missing
    |
 note: associated function defined here
@@ -59,13 +59,13 @@ note: associated function defined here
    |            ^^^^^^^
 help: provide the argument
    |
-11 |     let _ = TransactionMQProducer::builder(/* Arc<ClientRuntime> */);
+25 |     let _ = TransactionMQProducer::builder(/* Arc<ClientRuntime> */);
    |                                            ++++++++++++++++++++++++
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> tests/ui/client_runtime/builders_require_client_runtime.rs:12:13
+  --> tests/ui/client_runtime/builders_require_client_runtime.rs:26:13
    |
-12 |     let _ = DefaultMQAdminExt::new();
+26 |     let _ = DefaultMQAdminExt::new();
    |             ^^^^^^^^^^^^^^^^^^^^^^-- argument #1 of type `Arc<ClientRuntime>` is missing
    |
 note: associated function defined here
@@ -75,5 +75,5 @@ note: associated function defined here
    |            ^^^
 help: provide the argument
    |
-12 |     let _ = DefaultMQAdminExt::new(/* Arc<ClientRuntime> */);
+26 |     let _ = DefaultMQAdminExt::new(/* Arc<ClientRuntime> */);
    |                                    ++++++++++++++++++++++++
