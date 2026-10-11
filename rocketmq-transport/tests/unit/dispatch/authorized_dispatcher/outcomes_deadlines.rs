@@ -17,7 +17,7 @@ use crate::dispatch::DeferredAdmission;
 use crate::dispatch::DeferredClaimOutcome;
 use crate::dispatch::DeferredCommitErrorKind;
 use crate::dispatch::DeferredRegistration;
-use crate::dispatch::DeferredRegistryOutcome;
+use crate::dispatch::DeferredRegistrationResult;
 use crate::dispatch::DeferredResponder;
 use crate::dispatch::DeferredResponderOutcome;
 use crate::dispatch::DeferredResponseOutcome;
@@ -53,20 +53,20 @@ fn expect_deferred_permit(outcome: DeferredWaitAdmissionResult, context: &str) -
     }
 }
 
-fn expect_registered<R>(outcome: DeferredRegistryOutcome<R>, context: &str) -> DeferredRegistration
+fn expect_registered<R>(outcome: DeferredRegistrationResult<R>, context: &str) -> DeferredRegistration
 where
     R: Send + 'static,
 {
     match outcome {
-        DeferredRegistryOutcome::Registered(registration) => registration,
-        DeferredRegistryOutcome::DuplicateRequest(_) => panic!("{context}: duplicate request"),
-        DeferredRegistryOutcome::IdentityExhausted(_) => panic!("{context}: identity exhausted"),
-        DeferredRegistryOutcome::ParentCancelled => panic!("{context}: parent cancelled"),
-        DeferredRegistryOutcome::SessionClosed => panic!("{context}: session closed"),
-        DeferredRegistryOutcome::DeadlineExpired => panic!("{context}: deadline expired"),
-        DeferredRegistryOutcome::BuilderRejected { .. } => panic!("{context}: builder rejected"),
-        DeferredRegistryOutcome::ContractViolation { .. } => panic!("{context}: contract violation"),
-        DeferredRegistryOutcome::OperationalFailure { .. } => panic!("{context}: operational failure"),
+        DeferredRegistrationResult::Registered(registration) => registration,
+        DeferredRegistrationResult::DuplicateRequest(_) => panic!("{context}: duplicate request"),
+        DeferredRegistrationResult::IdentityExhausted(_) => panic!("{context}: identity exhausted"),
+        DeferredRegistrationResult::ParentCancelled => panic!("{context}: parent cancelled"),
+        DeferredRegistrationResult::SessionClosed => panic!("{context}: session closed"),
+        DeferredRegistrationResult::DeadlineExpired => panic!("{context}: deadline expired"),
+        DeferredRegistrationResult::BuilderRejected { .. } => panic!("{context}: builder rejected"),
+        DeferredRegistrationResult::ContractViolation { .. } => panic!("{context}: contract violation"),
+        DeferredRegistrationResult::OperationalFailure { .. } => panic!("{context}: operational failure"),
     }
 }
 
