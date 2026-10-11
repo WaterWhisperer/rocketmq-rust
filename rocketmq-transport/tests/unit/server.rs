@@ -39,16 +39,16 @@ use tokio::net::TcpStream;
 
 use super::*;
 use crate::dispatch::DeferredAdmission;
-use crate::dispatch::DeferredAdmissionAcquireOutcome;
 use crate::dispatch::DeferredClaimResult;
 use crate::dispatch::DeferredParts;
+use crate::dispatch::DeferredRegistrationResult;
 use crate::dispatch::DeferredRegistry;
-use crate::dispatch::DeferredRegistryOutcome;
 use crate::dispatch::DeferredRequest;
 use crate::dispatch::DeferredResponderOutcome;
 use crate::dispatch::DeferredResumeResult;
 use crate::dispatch::DeferredResumeRetainedSize;
 use crate::dispatch::DeferredRetainedSizeParts;
+use crate::dispatch::DeferredWaitAdmissionResult;
 use crate::dispatch::DeferredWaitLimits;
 use crate::dispatch::DeferredWakeReason;
 use crate::dispatch::ProtocolNoResponseReason;
@@ -357,11 +357,11 @@ impl RequestProcessor for NetworkDeferredCleanupProcessor {
         let retained = DeferredRegistry::<usize>::try_retained_size(DeferredRetainedSizeParts::new(0))
             .map_err(|error| crate::error_helpers::internal_failure("size network deferred registration", error))?;
         let permit = match self.admission.try_reserve(retained) {
-            DeferredAdmissionAcquireOutcome::Closed => panic!("deferred admission unexpectedly closed"),
-            DeferredAdmissionAcquireOutcome::Acquired(permit) => permit,
-            DeferredAdmissionAcquireOutcome::WaiterCapacityExhausted(_)
-            | DeferredAdmissionAcquireOutcome::RetainedByteCapacityExhausted(_)
-            | DeferredAdmissionAcquireOutcome::ParentCapacityExhausted(_) => {
+            DeferredWaitAdmissionResult::Closed => panic!("deferred admission unexpectedly closed"),
+            DeferredWaitAdmissionResult::Acquired(permit) => permit,
+            DeferredWaitAdmissionResult::WaiterCapacityExhausted(_)
+            | DeferredWaitAdmissionResult::RetainedByteCapacityExhausted(_)
+            | DeferredWaitAdmissionResult::ParentCapacityExhausted(_) => {
                 return Err(crate::error_helpers::argument_invalid());
             }
         };
@@ -369,29 +369,29 @@ impl RequestProcessor for NetworkDeferredCleanupProcessor {
             opaque as usize,
             DeferredParts::new(responder, permit),
         )) {
-            DeferredRegistryOutcome::Registered(registration) => registration,
-            DeferredRegistryOutcome::DuplicateRequest(recovery)
-            | DeferredRegistryOutcome::IdentityExhausted(recovery) => {
+            DeferredRegistrationResult::Registered(registration) => registration,
+            DeferredRegistrationResult::DuplicateRequest(recovery)
+            | DeferredRegistrationResult::IdentityExhausted(recovery) => {
                 drop(recovery);
                 return Err(crate::error_helpers::argument_invalid());
             }
-            DeferredRegistryOutcome::ParentCancelled
-            | DeferredRegistryOutcome::SessionClosed
-            | DeferredRegistryOutcome::DeadlineExpired => {
+            DeferredRegistrationResult::ParentCancelled
+            | DeferredRegistrationResult::SessionClosed
+            | DeferredRegistrationResult::DeadlineExpired => {
                 return Err(crate::error_helpers::argument_invalid());
             }
-            DeferredRegistryOutcome::BuilderRejected { error, parts } => {
+            DeferredRegistrationResult::BuilderRejected { error, parts } => {
                 drop(parts);
                 match error {}
             }
-            DeferredRegistryOutcome::ContractViolation { violation, recovery } => {
+            DeferredRegistrationResult::ContractViolation { violation, recovery } => {
                 drop(recovery);
                 return Err(crate::error_helpers::internal_failure(
                     "register network deferred request",
                     violation,
                 ));
             }
-            DeferredRegistryOutcome::OperationalFailure { error, recovery } => {
+            DeferredRegistrationResult::OperationalFailure { error, recovery } => {
                 drop(recovery);
                 return Err(crate::error_helpers::internal_failure(
                     "register network deferred request",

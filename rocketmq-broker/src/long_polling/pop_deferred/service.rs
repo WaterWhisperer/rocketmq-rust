@@ -37,25 +37,25 @@ use rocketmq_runtime::TaskId;
 use rocketmq_store::ArcMessageFilter;
 use rocketmq_transport::api::ClaimedDeferred;
 use rocketmq_transport::api::DeferredAdmission;
-use rocketmq_transport::api::DeferredAdmissionAcquireOutcome;
 use rocketmq_transport::api::DeferredAdmissionSnapshot;
 use rocketmq_transport::api::DeferredClaimResult;
+use rocketmq_transport::api::DeferredExpiryAttachmentStatus;
 use rocketmq_transport::api::DeferredExpiryBatch;
 use rocketmq_transport::api::DeferredExpiryBatchStats;
 use rocketmq_transport::api::DeferredExpiryMargins;
-use rocketmq_transport::api::DeferredExpiryOutcome;
 use rocketmq_transport::api::DeferredId;
 use rocketmq_transport::api::DeferredParts;
 use rocketmq_transport::api::DeferredRegistration;
+use rocketmq_transport::api::DeferredRegistrationResult;
 use rocketmq_transport::api::DeferredRegistry;
-use rocketmq_transport::api::DeferredRegistryOutcome;
 use rocketmq_transport::api::DeferredRegistryRecovery;
-use rocketmq_transport::api::DeferredRegistryShutdownOutcome;
+use rocketmq_transport::api::DeferredRegistryShutdownStatus;
 use rocketmq_transport::api::DeferredResponderOutcome;
 use rocketmq_transport::api::DeferredResumeResult;
 use rocketmq_transport::api::DeferredResumeRetainedSize;
 use rocketmq_transport::api::DeferredResumeSubmissionStatus;
 use rocketmq_transport::api::DeferredRetainedSizeParts;
+use rocketmq_transport::api::DeferredWaitAdmissionResult;
 use rocketmq_transport::api::DeferredWakeReason;
 use rocketmq_transport::api::RemotingRequest;
 use rocketmq_transport::api::RemotingResponse;
@@ -515,7 +515,7 @@ impl PopDeferredService {
         let retained_size = DeferredRegistry::<ResumePop>::try_retained_size(retained_parts)
             .map_err(PopDeferredPrepareError::Contract)?;
         let permit = match self.admission.try_reserve(retained_size) {
-            DeferredAdmissionAcquireOutcome::Acquired(permit) => permit,
+            DeferredWaitAdmissionResult::Acquired(permit) => permit,
             outcome => {
                 return Ok(PopDeferredPreparationStatus::Rejected(
                     PopDeferredPrepareRejection::Admission(outcome),
@@ -576,7 +576,7 @@ impl PopDeferredService {
         } = prepared;
         let mut parts = DeferredParts::new(responder, permit);
         match parts.try_with_expiry(deadline.protocol_at(), self.expiry_margins) {
-            Ok(DeferredExpiryOutcome::Attached) => {}
+            Ok(DeferredExpiryAttachmentStatus::Attached) => {}
             Ok(outcome) => {
                 return Ok(PopDeferredRegistrationStatus::Rejected(Box::new(
                     PopDeferredRegisterRejection::Expiry { outcome, parts },
@@ -593,33 +593,33 @@ impl PopDeferredService {
             let index_lease = reservation.publish(id, deadline, Arc::clone(&criteria));
             Ok::<_, Infallible>(ResumePop::new(request, criteria, deadline, index_lease))
         }) {
-            DeferredRegistryOutcome::Registered(registration) => {
+            DeferredRegistrationResult::Registered(registration) => {
                 Ok(PopDeferredRegistrationStatus::Registered(Box::new(registration)))
             }
-            DeferredRegistryOutcome::DuplicateRequest(recovery) => {
+            DeferredRegistrationResult::DuplicateRequest(recovery) => {
                 release_deferred_registry_recovery(recovery);
                 Ok(PopDeferredRegistrationStatus::Rejected(Box::new(
                     PopDeferredRegisterRejection::RegistryRejected,
                 )))
             }
-            DeferredRegistryOutcome::IdentityExhausted(recovery) => {
+            DeferredRegistrationResult::IdentityExhausted(recovery) => {
                 release_deferred_registry_recovery(recovery);
                 Err(PopDeferredRegisterError::RegistryIdentityExhausted)
             }
-            DeferredRegistryOutcome::ParentCancelled
-            | DeferredRegistryOutcome::SessionClosed
-            | DeferredRegistryOutcome::DeadlineExpired => Ok(PopDeferredRegistrationStatus::Rejected(Box::new(
+            DeferredRegistrationResult::ParentCancelled
+            | DeferredRegistrationResult::SessionClosed
+            | DeferredRegistrationResult::DeadlineExpired => Ok(PopDeferredRegistrationStatus::Rejected(Box::new(
                 PopDeferredRegisterRejection::RegistryRejected,
             ))),
-            DeferredRegistryOutcome::BuilderRejected { error, parts } => {
+            DeferredRegistrationResult::BuilderRejected { error, parts } => {
                 drop(parts);
                 match error {}
             }
-            DeferredRegistryOutcome::ContractViolation { violation, recovery } => {
+            DeferredRegistrationResult::ContractViolation { violation, recovery } => {
                 release_deferred_registry_recovery(recovery);
                 Err(PopDeferredRegisterError::RegistryContract(violation))
             }
-            DeferredRegistryOutcome::OperationalFailure { error, recovery } => {
+            DeferredRegistrationResult::OperationalFailure { error, recovery } => {
                 release_deferred_registry_recovery(recovery);
                 Err(PopDeferredRegisterError::RegistryOperational(error))
             }
@@ -1102,7 +1102,7 @@ impl PopDeferredService {
     }
 
     #[must_use]
-    pub(crate) fn shutdown(&self) -> DeferredRegistryShutdownOutcome {
+    pub(crate) fn shutdown(&self) -> DeferredRegistryShutdownStatus {
         self.seal();
         self.registry.shutdown()
     }
@@ -1320,7 +1320,7 @@ pub(crate) enum PopDeferredPrepareRejection {
     ServiceClosed,
     DeadlineElapsed,
     Index(PopIndexRejection),
-    Admission(DeferredAdmissionAcquireOutcome),
+    Admission(DeferredWaitAdmissionResult),
 }
 
 impl PopDeferredPrepareRejection {
@@ -1418,7 +1418,7 @@ pub(crate) enum PopDeferredRegisterRejection {
     ServiceClosed,
     Responder(DeferredResponderOutcome),
     Expiry {
-        outcome: DeferredExpiryOutcome,
+        outcome: DeferredExpiryAttachmentStatus,
         parts: DeferredParts,
     },
     RegistryRejected,

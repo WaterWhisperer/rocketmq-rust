@@ -14,10 +14,10 @@
 
 use super::*;
 
-use crate::dispatch::DeferredAdmissionAcquireOutcome;
 use crate::dispatch::DeferredClaimResult;
-use crate::dispatch::DeferredExpiryOutcome;
-use crate::dispatch::DeferredRegistryOutcome;
+use crate::dispatch::DeferredExpiryAttachmentStatus;
+use crate::dispatch::DeferredRegistrationResult;
+use crate::dispatch::DeferredWaitAdmissionResult;
 
 fn assert_expiry_registry_released<R>(registry: &DeferredRegistry<R>, harness: &Harness)
 where
@@ -53,35 +53,35 @@ where
         .deferred_seed_for_test(telemetry, harness.session.view().id(), control)
         .into_responder(original);
     let permit = match harness.admission.try_reserve(retained) {
-        DeferredAdmissionAcquireOutcome::Closed => panic!("deferred admission unexpectedly closed"),
-        DeferredAdmissionAcquireOutcome::Acquired(permit) => permit,
-        DeferredAdmissionAcquireOutcome::WaiterCapacityExhausted(_) => {
+        DeferredWaitAdmissionResult::Closed => panic!("deferred admission unexpectedly closed"),
+        DeferredWaitAdmissionResult::Acquired(permit) => permit,
+        DeferredWaitAdmissionResult::WaiterCapacityExhausted(_) => {
             panic!("telemetry wait permit unexpectedly exhausted waiter capacity")
         }
-        DeferredAdmissionAcquireOutcome::RetainedByteCapacityExhausted(_) => {
+        DeferredWaitAdmissionResult::RetainedByteCapacityExhausted(_) => {
             panic!("telemetry wait permit unexpectedly exhausted retained-byte capacity")
         }
-        DeferredAdmissionAcquireOutcome::ParentCapacityExhausted(_) => {
+        DeferredWaitAdmissionResult::ParentCapacityExhausted(_) => {
             panic!("telemetry wait permit unexpectedly exhausted parent capacity")
         }
     };
     DeferredParts::new(responder, permit)
 }
 
-fn expect_registered<R>(outcome: DeferredRegistryOutcome<R>, context: &str) -> crate::dispatch::DeferredRegistration
+fn expect_registered<R>(outcome: DeferredRegistrationResult<R>, context: &str) -> crate::dispatch::DeferredRegistration
 where
     R: Send + 'static,
 {
     match outcome {
-        DeferredRegistryOutcome::Registered(registration) => registration,
-        DeferredRegistryOutcome::DuplicateRequest(_) => panic!("{context}: duplicate request"),
-        DeferredRegistryOutcome::IdentityExhausted(_) => panic!("{context}: identity exhausted"),
-        DeferredRegistryOutcome::ParentCancelled => panic!("{context}: parent cancelled"),
-        DeferredRegistryOutcome::SessionClosed => panic!("{context}: session closed"),
-        DeferredRegistryOutcome::DeadlineExpired => panic!("{context}: deadline expired"),
-        DeferredRegistryOutcome::BuilderRejected { .. } => panic!("{context}: builder rejected"),
-        DeferredRegistryOutcome::ContractViolation { .. } => panic!("{context}: contract violation"),
-        DeferredRegistryOutcome::OperationalFailure { .. } => panic!("{context}: operational failure"),
+        DeferredRegistrationResult::Registered(registration) => registration,
+        DeferredRegistrationResult::DuplicateRequest(_) => panic!("{context}: duplicate request"),
+        DeferredRegistrationResult::IdentityExhausted(_) => panic!("{context}: identity exhausted"),
+        DeferredRegistrationResult::ParentCancelled => panic!("{context}: parent cancelled"),
+        DeferredRegistrationResult::SessionClosed => panic!("{context}: session closed"),
+        DeferredRegistrationResult::DeadlineExpired => panic!("{context}: deadline expired"),
+        DeferredRegistrationResult::BuilderRejected { .. } => panic!("{context}: builder rejected"),
+        DeferredRegistrationResult::ContractViolation { .. } => panic!("{context}: contract violation"),
+        DeferredRegistrationResult::OperationalFailure { .. } => panic!("{context}: operational failure"),
     }
 }
 
@@ -196,7 +196,7 @@ async fn deferred_expiry_long_poll_uses_the_unified_timeout_claim() {
             protocol_at,
             DeferredExpiryMargins::new(Duration::from_secs(1), Duration::from_secs(1)),
         ),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     let state = parts.response_state();
     let registration = expect_registered(
@@ -231,7 +231,7 @@ async fn message_claim_before_expiry_sweep_keeps_message_as_the_immutable_winner
             protocol_at,
             DeferredExpiryMargins::new(Duration::from_secs(1), Duration::from_secs(1)),
         ),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     let state = parts.response_state();
     let registration = expect_registered(
@@ -276,7 +276,7 @@ async fn expiry_sweep_before_message_claim_keeps_timeout_as_the_immutable_winner
             protocol_at,
             DeferredExpiryMargins::new(Duration::from_secs(1), Duration::from_secs(1)),
         ),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     let state = parts.response_state();
     let registration = expect_registered(
@@ -323,7 +323,7 @@ async fn deferred_expiry_owner_cutoff_wins_without_a_timeout_claim() {
             now + Duration::from_secs(25),
             DeferredExpiryMargins::new(Duration::from_secs(5), Duration::from_secs(5)),
         ),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     assert_eq!(
         parts.expiry().expect("expiry").kind(),
@@ -356,7 +356,7 @@ async fn deferred_expiry_cursor_does_not_let_provisional_entry_starve_active_ent
     let mut first = expiring_parts::<u64>(&harness, harness.identity(303), None, None);
     assert_eq!(
         first.try_with_expiry(protocol_at, margins),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     let first_registration = expect_registered(
         registry.register(DeferredRequest::new(43, first)),
@@ -365,7 +365,7 @@ async fn deferred_expiry_cursor_does_not_let_provisional_entry_starve_active_ent
     let mut second = expiring_parts::<u64>(&harness, harness.identity(304), None, None);
     assert_eq!(
         second.try_with_expiry(protocol_at, margins),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     let second_registration = expect_registered(
         registry.register(DeferredRequest::new(44, second)),
@@ -404,7 +404,7 @@ async fn deferred_expiry_session_close_between_scan_and_claim_wins_deterministic
             protocol_at,
             DeferredExpiryMargins::new(Duration::from_secs(1), Duration::from_secs(1)),
         ),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     let registration = registry.register(DeferredRequest::new(45, parts));
     let registration = expect_registered(registration, "register raced expiry");
@@ -456,7 +456,7 @@ async fn shutdown_freezes_parent_over_session_for_ticket_state_and_one_metric() 
     harness.parent.cancel();
     assert!(matches!(
         registry.shutdown(),
-        DeferredRegistryShutdownOutcome::Completed(_)
+        DeferredRegistryShutdownStatus::Completed(_)
     ));
     let outcome = claim
         .await
@@ -599,7 +599,7 @@ async fn delayed_sweep_crossing_long_poll_and_owner_cutoff_chooses_owner() {
             now + Duration::from_secs(5),
             DeferredExpiryMargins::new(Duration::from_secs(3), Duration::from_secs(2)),
         ),
-        Ok(DeferredExpiryOutcome::Attached)
+        Ok(DeferredExpiryAttachmentStatus::Attached)
     );
     assert_eq!(
         parts.expiry().expect("expiry policy").kind(),

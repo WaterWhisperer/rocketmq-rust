@@ -14,16 +14,16 @@
 
 use super::harness::*;
 use crate::dispatch::DeferredAdmission;
-use crate::dispatch::DeferredAdmissionAcquireOutcome;
 use crate::dispatch::DeferredClaimResult;
 use crate::dispatch::DeferredCommitErrorKind;
 use crate::dispatch::DeferredRegistration;
-use crate::dispatch::DeferredRegistryOutcome;
+use crate::dispatch::DeferredRegistrationResult;
 use crate::dispatch::DeferredResponder;
 use crate::dispatch::DeferredResponderOutcome;
 use crate::dispatch::DeferredResponseOutcome;
 use crate::dispatch::DeferredResumeResult;
 use crate::dispatch::DeferredResumeRetainedSize;
+use crate::dispatch::DeferredWaitAdmissionResult;
 use crate::dispatch::DeferredWaitLimits;
 use crate::dispatch::DeferredWakeReason;
 use crate::dispatch::OriginalRequestIdentity;
@@ -37,39 +37,36 @@ use crate::runtime::processor::ResponseObservationOutcome;
 use crate::session_view::EmbeddedSessionRecord;
 use crate::telemetry::TransportTelemetry;
 
-fn expect_deferred_permit(
-    outcome: DeferredAdmissionAcquireOutcome,
-    context: &str,
-) -> crate::dispatch::DeferredWaitPermit {
+fn expect_deferred_permit(outcome: DeferredWaitAdmissionResult, context: &str) -> crate::dispatch::DeferredWaitPermit {
     match outcome {
-        DeferredAdmissionAcquireOutcome::Closed => panic!("deferred admission unexpectedly closed"),
-        DeferredAdmissionAcquireOutcome::Acquired(permit) => permit,
-        DeferredAdmissionAcquireOutcome::WaiterCapacityExhausted(_) => {
+        DeferredWaitAdmissionResult::Closed => panic!("deferred admission unexpectedly closed"),
+        DeferredWaitAdmissionResult::Acquired(permit) => permit,
+        DeferredWaitAdmissionResult::WaiterCapacityExhausted(_) => {
             panic!("{context}: waiter capacity exhausted")
         }
-        DeferredAdmissionAcquireOutcome::RetainedByteCapacityExhausted(_) => {
+        DeferredWaitAdmissionResult::RetainedByteCapacityExhausted(_) => {
             panic!("{context}: retained-byte capacity exhausted")
         }
-        DeferredAdmissionAcquireOutcome::ParentCapacityExhausted(_) => {
+        DeferredWaitAdmissionResult::ParentCapacityExhausted(_) => {
             panic!("{context}: parent capacity exhausted")
         }
     }
 }
 
-fn expect_registered<R>(outcome: DeferredRegistryOutcome<R>, context: &str) -> DeferredRegistration
+fn expect_registered<R>(outcome: DeferredRegistrationResult<R>, context: &str) -> DeferredRegistration
 where
     R: Send + 'static,
 {
     match outcome {
-        DeferredRegistryOutcome::Registered(registration) => registration,
-        DeferredRegistryOutcome::DuplicateRequest(_) => panic!("{context}: duplicate request"),
-        DeferredRegistryOutcome::IdentityExhausted(_) => panic!("{context}: identity exhausted"),
-        DeferredRegistryOutcome::ParentCancelled => panic!("{context}: parent cancelled"),
-        DeferredRegistryOutcome::SessionClosed => panic!("{context}: session closed"),
-        DeferredRegistryOutcome::DeadlineExpired => panic!("{context}: deadline expired"),
-        DeferredRegistryOutcome::BuilderRejected { .. } => panic!("{context}: builder rejected"),
-        DeferredRegistryOutcome::ContractViolation { .. } => panic!("{context}: contract violation"),
-        DeferredRegistryOutcome::OperationalFailure { .. } => panic!("{context}: operational failure"),
+        DeferredRegistrationResult::Registered(registration) => registration,
+        DeferredRegistrationResult::DuplicateRequest(_) => panic!("{context}: duplicate request"),
+        DeferredRegistrationResult::IdentityExhausted(_) => panic!("{context}: identity exhausted"),
+        DeferredRegistrationResult::ParentCancelled => panic!("{context}: parent cancelled"),
+        DeferredRegistrationResult::SessionClosed => panic!("{context}: session closed"),
+        DeferredRegistrationResult::DeadlineExpired => panic!("{context}: deadline expired"),
+        DeferredRegistrationResult::BuilderRejected { .. } => panic!("{context}: builder rejected"),
+        DeferredRegistrationResult::ContractViolation { .. } => panic!("{context}: contract violation"),
+        DeferredRegistrationResult::OperationalFailure { .. } => panic!("{context}: operational failure"),
     }
 }
 
@@ -332,7 +329,7 @@ async fn dispatcher_commits_a_real_registry_registration_before_returning_deferr
         .dispatch(&harness.authorized, session, harness.context(None), command, 256, None)
         .await
         .expect("dispatch real deferred registration");
-    let DispatchOutcome::Accepted(_) = outcome else {
+    let DispatchSubmissionResult::Accepted(_) = outcome else {
         panic!("deferred request must enter session execution");
     };
     while harness.authorized.operation_context().active_task_count() > 0 {
@@ -460,7 +457,7 @@ async fn deferred_commit_session_close_is_a_normal_terminal_race_without_recordi
         .dispatch(&harness.authorized, session, harness.context(None), command, 256, None)
         .await
         .expect("request admission succeeds before deferred commit");
-    assert!(matches!(outcome, DispatchOutcome::Accepted(_)));
+    assert!(matches!(outcome, DispatchSubmissionResult::Accepted(_)));
     harness.drain_requests().await;
 
     assert!(dispatcher.reported_failure_categories().is_empty());
@@ -521,7 +518,7 @@ async fn deferred_commit_classifies_only_invariants_as_admitted_failures() {
             .dispatch(&harness.authorized, session, harness.context(None), command, 256, None)
             .await
             .expect("dispatch admission succeeds before the deferred commit");
-        assert!(matches!(outcome, DispatchOutcome::Accepted(_)));
+        assert!(matches!(outcome, DispatchSubmissionResult::Accepted(_)));
         harness.drain_requests().await;
 
         assert_eq!(registered_events.load(Ordering::SeqCst), 0);

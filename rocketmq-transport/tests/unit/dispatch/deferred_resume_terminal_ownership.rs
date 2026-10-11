@@ -47,16 +47,16 @@ use crate::admission::AdmissionScope;
 use crate::dispatch::AuthenticationState;
 use crate::dispatch::ClaimedDeferred;
 use crate::dispatch::DeferredAdmission;
-use crate::dispatch::DeferredAdmissionAcquireOutcome;
 use crate::dispatch::DeferredClaimResult;
 use crate::dispatch::DeferredParts;
+use crate::dispatch::DeferredRegistrationResult;
 use crate::dispatch::DeferredRegistry;
-use crate::dispatch::DeferredRegistryOutcome;
 use crate::dispatch::DeferredRequest;
 use crate::dispatch::DeferredResumeResult;
 use crate::dispatch::DeferredResumeSubmissionStatus;
 use crate::dispatch::DeferredRetainedSizeParts;
 use crate::dispatch::DeferredTerminalReason;
+use crate::dispatch::DeferredWaitAdmissionResult;
 use crate::dispatch::DeferredWaitLimits;
 use crate::dispatch::DeferredWakeReason;
 use crate::dispatch::OriginalRequestIdentity;
@@ -74,34 +74,34 @@ use crate::session_executor::SessionExecutor;
 use crate::session_view::EmbeddedSessionRecord;
 use crate::telemetry::TransportTelemetry;
 
-fn acquired(outcome: DeferredAdmissionAcquireOutcome) -> crate::dispatch::DeferredWaitPermit {
+fn acquired(outcome: DeferredWaitAdmissionResult) -> crate::dispatch::DeferredWaitPermit {
     match outcome {
-        DeferredAdmissionAcquireOutcome::Closed => panic!("deferred admission unexpectedly closed"),
-        DeferredAdmissionAcquireOutcome::Acquired(permit) => permit,
-        DeferredAdmissionAcquireOutcome::WaiterCapacityExhausted(_)
-        | DeferredAdmissionAcquireOutcome::RetainedByteCapacityExhausted(_)
-        | DeferredAdmissionAcquireOutcome::ParentCapacityExhausted(_) => {
+        DeferredWaitAdmissionResult::Closed => panic!("deferred admission unexpectedly closed"),
+        DeferredWaitAdmissionResult::Acquired(permit) => permit,
+        DeferredWaitAdmissionResult::WaiterCapacityExhausted(_)
+        | DeferredWaitAdmissionResult::RetainedByteCapacityExhausted(_)
+        | DeferredWaitAdmissionResult::ParentCapacityExhausted(_) => {
             panic!("terminal ownership wait capacity is available")
         }
     }
 }
 
-fn registered<R>(outcome: DeferredRegistryOutcome<R>) -> crate::dispatch::DeferredRegistration
+fn registered<R>(outcome: DeferredRegistrationResult<R>) -> crate::dispatch::DeferredRegistration
 where
     R: Send + 'static,
 {
     match outcome {
-        DeferredRegistryOutcome::Registered(registration) => registration,
-        DeferredRegistryOutcome::DuplicateRequest(_)
-        | DeferredRegistryOutcome::IdentityExhausted(_)
-        | DeferredRegistryOutcome::ParentCancelled
-        | DeferredRegistryOutcome::SessionClosed
-        | DeferredRegistryOutcome::DeadlineExpired
-        | DeferredRegistryOutcome::ContractViolation { .. }
-        | DeferredRegistryOutcome::OperationalFailure { .. } => {
+        DeferredRegistrationResult::Registered(registration) => registration,
+        DeferredRegistrationResult::DuplicateRequest(_)
+        | DeferredRegistrationResult::IdentityExhausted(_)
+        | DeferredRegistrationResult::ParentCancelled
+        | DeferredRegistrationResult::SessionClosed
+        | DeferredRegistrationResult::DeadlineExpired
+        | DeferredRegistrationResult::ContractViolation { .. }
+        | DeferredRegistrationResult::OperationalFailure { .. } => {
             panic!("terminal ownership registration succeeds")
         }
-        DeferredRegistryOutcome::BuilderRejected { error, .. } => match error {},
+        DeferredRegistrationResult::BuilderRejected { error, .. } => match error {},
     }
 }
 
