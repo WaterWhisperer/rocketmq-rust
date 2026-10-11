@@ -29,19 +29,19 @@ use rocketmq_transport::api::DefaultRequestProcessor;
 use rocketmq_transport::api::DeferredCancellationReason;
 use rocketmq_transport::api::DeferredClaimOutcome;
 use rocketmq_transport::api::DeferredExpiry;
+use rocketmq_transport::api::DeferredExpiryAttachmentStatus;
 use rocketmq_transport::api::DeferredExpiryBatch;
 use rocketmq_transport::api::DeferredExpiryBatchStats;
 use rocketmq_transport::api::DeferredExpiryKind;
 use rocketmq_transport::api::DeferredExpiryMargins;
-use rocketmq_transport::api::DeferredExpiryOutcome;
 use rocketmq_transport::api::DeferredId;
 use rocketmq_transport::api::DeferredParts;
 use rocketmq_transport::api::DeferredRegistration;
 use rocketmq_transport::api::DeferredRegistrationResult;
 use rocketmq_transport::api::DeferredRegistry;
 use rocketmq_transport::api::DeferredRegistryRecovery;
-use rocketmq_transport::api::DeferredRegistryShutdownOutcome;
 use rocketmq_transport::api::DeferredRegistryShutdownStats;
+use rocketmq_transport::api::DeferredRegistryShutdownStatus;
 use rocketmq_transport::api::DeferredRequest;
 use rocketmq_transport::api::DeferredResponder;
 use rocketmq_transport::api::DeferredResumeOutcome;
@@ -275,7 +275,7 @@ fn assert_deferred_registry_contract<R, E, F>(
 {
     let _: DeferredRegistry<R> = registry.clone();
     let _: fn() -> DeferredRegistry<R> = DeferredRegistry::<R>::new;
-    let _: fn(&DeferredRegistry<R>) -> DeferredRegistryShutdownOutcome = DeferredRegistry::<R>::shutdown;
+    let _: fn(&DeferredRegistry<R>) -> DeferredRegistryShutdownStatus = DeferredRegistry::<R>::shutdown;
     let _ = id;
     if let Some(parts) = parts {
         let _: RequestId = parts.request_id();
@@ -324,7 +324,7 @@ fn assert_deferred_registry_contract<R, E, F>(
         &mut DeferredParts,
         tokio::time::Instant,
         DeferredExpiryMargins,
-    ) -> Result<DeferredExpiryOutcome, TransportContractViolation> = DeferredParts::try_with_expiry;
+    ) -> Result<DeferredExpiryAttachmentStatus, TransportContractViolation> = DeferredParts::try_with_expiry;
     let _: fn(R, DeferredParts) -> DeferredRequest<R> = DeferredRequest::new;
     let _: fn(DeferredRetainedSizeParts) -> Result<DeferredRetainedSize, _> = DeferredRegistry::<R>::try_retained_size;
 }
@@ -569,7 +569,7 @@ fn api_exposes_the_affine_transactional_deferred_registry_contract() {
     assert_debug_contract::<DeferredParts>();
     assert_debug_contract::<DeferredRequest<String>>();
     assert_debug_contract::<DeferredRegistry<String>>();
-    assert_debug_contract::<DeferredRegistryShutdownOutcome>();
+    assert_debug_contract::<DeferredRegistryShutdownStatus>();
     assert_debug_contract::<DeferredRegistryShutdownStats>();
     assert_debug_contract::<DeferredExpiry>();
     assert_debug_contract::<DeferredExpiryBatchStats>();
@@ -582,7 +582,7 @@ fn api_exposes_the_affine_transactional_deferred_registry_contract() {
     assert_error_contract::<TransportError>();
     let _: DeferredRegistrationResult<String> = DeferredRegistrationResult::ParentCancelled;
     let _: DeferredClaimOutcome<String> = DeferredClaimOutcome::AlreadyClaimed;
-    let _: DeferredExpiryOutcome = DeferredExpiryOutcome::AlreadyAttached;
+    let _: DeferredExpiryAttachmentStatus = DeferredExpiryAttachmentStatus::AlreadyAttached;
     let _: DeferredResumeOutcome = DeferredResumeOutcome::SessionClosed;
     let _: DeferredResumeSubmitOutcome = DeferredResumeSubmitOutcome::AdmissionRejected;
     let _ = assert_claim_resume_contract::<String>;

@@ -20,8 +20,8 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use super::deferred_expiry::DeferredExpiry;
+use super::deferred_expiry::DeferredExpiryAttachmentStatus;
 use super::deferred_expiry::DeferredExpiryMargins;
-use super::deferred_expiry::DeferredExpiryOutcome;
 use super::deferred_expiry::ExpiryRejection;
 use super::deferred_responder::DeferredResumeContext;
 use super::deferred_response::DeferredSystemCancellationReason;
@@ -130,19 +130,21 @@ impl DeferredParts {
         &mut self,
         protocol_at: tokio::time::Instant,
         margins: DeferredExpiryMargins,
-    ) -> Result<DeferredExpiryOutcome, crate::contract::TransportContractViolation> {
+    ) -> Result<DeferredExpiryAttachmentStatus, crate::contract::TransportContractViolation> {
         if self.expiry.is_some() {
-            return Ok(DeferredExpiryOutcome::AlreadyAttached);
+            return Ok(DeferredExpiryAttachmentStatus::AlreadyAttached);
         }
         margins.validate()?;
         match DeferredExpiry::try_from_control(self.control(), protocol_at, margins) {
             Ok(expiry) => {
                 self.expiry = Some(expiry);
-                Ok(DeferredExpiryOutcome::Attached)
+                Ok(DeferredExpiryAttachmentStatus::Attached)
             }
-            Err(ExpiryRejection::OwnerBudgetInsufficient) => Ok(DeferredExpiryOutcome::OwnerBudgetInsufficient),
-            Err(ExpiryRejection::ProtocolAlreadyExpired) => Ok(DeferredExpiryOutcome::ProtocolAlreadyExpired),
-            Err(ExpiryRejection::OwnerAlreadyExpired) => Ok(DeferredExpiryOutcome::OwnerAlreadyExpired),
+            Err(ExpiryRejection::OwnerBudgetInsufficient) => {
+                Ok(DeferredExpiryAttachmentStatus::OwnerBudgetInsufficient)
+            }
+            Err(ExpiryRejection::ProtocolAlreadyExpired) => Ok(DeferredExpiryAttachmentStatus::ProtocolAlreadyExpired),
+            Err(ExpiryRejection::OwnerAlreadyExpired) => Ok(DeferredExpiryAttachmentStatus::OwnerAlreadyExpired),
         }
     }
 
@@ -320,7 +322,7 @@ where
 /// Result of sealing a deferred registry and releasing registry-owned state.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[non_exhaustive]
-pub enum DeferredRegistryShutdownOutcome {
+pub enum DeferredRegistryShutdownStatus {
     /// This caller won shutdown and completed the detached registry-owned batch.
     Completed(DeferredRegistryShutdownStats),
     /// Another or reentrant caller is currently completing shutdown.
@@ -719,7 +721,7 @@ where
     /// user state still seals the registry, so a later call reports
     /// `AlreadyClosed`.
     #[must_use]
-    pub fn shutdown(&self) -> DeferredRegistryShutdownOutcome {
+    pub fn shutdown(&self) -> DeferredRegistryShutdownStatus {
         self.inner.shutdown()
     }
 
